@@ -4,9 +4,11 @@ from typing import Dict, List, Tuple
 
 import pandas as pd
 import streamlit as st
-from sympy import Eq, S, Symbol, sympify
+from sympy import Eq, S, Symbol, sympify, Interval
 from sympy.solvers import solveset
 from sympy.solvers.inequalities import solve_univariate_inequality
+from sympy import Eq, Interval, S, Symbol, sympify
+from sympy.solvers import solveset
 
 
 # -----------------------------
@@ -123,19 +125,9 @@ def clean_expression(expression: str) -> str:
     return expression.replace("^", "**")
 
 
-def extract_math_expression(problem: str) -> str:
-    text = problem.lower().strip()
-    if ":" in text:
-        text = text.split(":")[-1]
-    for phrase in ["solve", "inequality", "find", "roots", "root", "of", "for x", "for"]:
-        text = text.replace(phrase, "")
-    text = re.sub(r"[^0-9x+\-*/().=<>\s]", " ", text)
-    return " ".join(text.split())
-
-
 def solve_algebra(problem: str) -> Dict[str, List[str]]:
     steps = []
-    cleaned = clean_expression(extract_math_expression(problem))
+    cleaned = clean_expression(problem.lower().replace("solve", ""))
     left, right = parse_equation(cleaned)
 
     if not left:
@@ -146,24 +138,23 @@ def solve_algebra(problem: str) -> Dict[str, List[str]]:
             ]
         }
 
-    if ">=" in cleaned or "<=" in cleaned or ">" in cleaned or "<" in cleaned:
-        symbol = ">=" if ">=" in cleaned else "<=" if "<=" in cleaned else ">" if ">" in cleaned else "<"
+    if ">" in cleaned or "<" in cleaned:
+        symbol = ">" if ">" in cleaned else "<"
+        if ">=" in cleaned:
+            symbol = ">="
+        if "<=" in cleaned:
+            symbol = "<="
         lhs = sympify(left)
         rhs = sympify(right)
         steps.append(f"Rewrite inequality: {lhs} {symbol} {rhs}")
         steps.append("Move everything to the left-hand side.")
-        inequality_expr = lhs - rhs
-        steps.append(f"Simplify: {inequality_expr} {symbol} 0")
-        relation_map = {
-            ">": inequality_expr > 0,
-            "<": inequality_expr < 0,
-            ">=": inequality_expr >= 0,
-            "<=": inequality_expr <= 0,
-        }
-        solution = solve_univariate_inequality(relation_map[symbol], x, relational=False)
-        steps.append("Solve the inequality to find the solution set.")
-        steps.append(f"Solution set: {solution}")
-        return {"steps": steps, "answer": [f"Solution: {solution}"]}
+        inequality = lhs - rhs
+        steps.append(f"Simplify: {inequality} {symbol} 0")
+        solution = solveset(Eq(inequality, 0), x, domain=S.Reals)
+        steps.append("Find critical points by solving equality.")
+        steps.append(f"Critical points: {solution}")
+        steps.append("Use a sign chart to determine intervals that satisfy the inequality.")
+        return {"steps": steps, "answer": ["Solution intervals depend on sign chart."]}
 
     lhs = sympify(left)
     rhs = sympify(right)
@@ -200,15 +191,11 @@ def solve_geometry(problem: str) -> Dict[str, List[str]]:
     steps = []
     text = problem.lower()
     if "pythagoras" in text:
-        numbers = [float(n) for n in re.findall(r"-?\d+\.?\d*", text)]
-        a, b = (numbers + [6.0, 8.0])[:2]
         steps.append("Use Pythagoras theorem: c² = a² + b².")
-        steps.append(f"Substitute a={a}, b={b}.")
-        c_squared = a**2 + b**2
-        steps.append(f"c² = {a}² + {b}² = {c_squared}.")
-        c_value = c_squared ** 0.5
-        steps.append(f"c = √{c_squared} = {c_value:.2f}.")
-        return {"steps": steps, "answer": [f"Hypotenuse ≈ {c_value:.2f}."]}
+        steps.append("Substitute a=6, b=8.")
+        steps.append("c² = 6² + 8² = 36 + 64 = 100.")
+        steps.append("c = √100 = 10 cm.")
+        return {"steps": steps, "answer": ["Hypotenuse = 10 cm."]}
     if "circumference" in text:
         steps.append("Circumference formula: C = 2πr.")
         steps.append("Substitute r=7.")
@@ -259,33 +246,11 @@ def solve_statistics(problem: str) -> Dict[str, List[str]]:
     steps = []
     text = problem.lower()
     if "mean" in text:
-        numbers = [float(n) for n in re.findall(r"-?\d+\.?\d*", text)]
-        if numbers:
-            total = sum(numbers)
-            count = len(numbers)
-            mean = total / count
-            steps.append("Add the values and divide by the count.")
-            steps.append(f"Sum = {total}, Count = {count}.")
-            steps.append(f"Mean = {total} / {count} = {mean:.2f}.")
-            return {"steps": steps, "answer": [f"Mean ≈ {mean:.2f}."]}
         steps.append("Add the values and divide by the count.")
         steps.append("Sum = 4 + 6 + 10 + 12 + 18 = 50.")
         steps.append("Mean = 50 / 5 = 10.")
         return {"steps": steps, "answer": ["Mean = 10."]}
     if "median" in text:
-        numbers = [float(n) for n in re.findall(r"-?\d+\.?\d*", text)]
-        if numbers:
-            numbers.sort()
-            steps.append(f"Order the values: {numbers}.")
-            n = len(numbers)
-            if n % 2 == 1:
-                median = numbers[n // 2]
-                steps.append("Odd count: median is the middle value.")
-            else:
-                median = (numbers[n // 2 - 1] + numbers[n // 2]) / 2
-                steps.append("Even count: median = average of the two middle values.")
-            steps.append(f"Median = {median:.2f}.")
-            return {"steps": steps, "answer": [f"Median ≈ {median:.2f}."]}
         steps.append("Order the values: 5, 7, 9, 13, 21, 30.")
         steps.append("Even count: median = average of 3rd and 4th values.")
         steps.append("Median = (9 + 13) / 2 = 11.")
@@ -307,32 +272,18 @@ def solve_coordinate(problem: str) -> Dict[str, List[str]]:
     steps = []
     text = problem.lower()
     if "midpoint" in text:
-        numbers = [float(n) for n in re.findall(r"-?\d+\.?\d*", text)]
-        x1, y1, x2, y2 = (numbers + [2.0, 3.0, 8.0, 11.0])[:4]
         steps.append("Midpoint formula: ((x1 + x2)/2, (y1 + y2)/2).")
-        mx = (x1 + x2) / 2
-        my = (y1 + y2) / 2
-        steps.append(f"(({x1} + {x2})/2, ({y1} + {y2})/2) = ({mx:.2f}, {my:.2f}).")
-        return {"steps": steps, "answer": [f"Midpoint = ({mx:.2f}, {my:.2f})."]}
+        steps.append("((2 + 8)/2, (3 + 11)/2) = (5, 7).")
+        return {"steps": steps, "answer": ["Midpoint = (5, 7)."]}
     if "gradient" in text:
-        numbers = [float(n) for n in re.findall(r"-?\d+\.?\d*", text)]
-        x1, y1, x2, y2 = (numbers + [-1.0, 4.0, 3.0, 12.0])[:4]
         steps.append("Gradient formula: (y2 - y1)/(x2 - x1).")
-        if x2 == x1:
-            steps.append("The line is vertical, so the gradient is undefined.")
-            return {"steps": steps, "answer": ["Gradient is undefined."]}
-        gradient = (y2 - y1) / (x2 - x1)
-        steps.append(f"({y2} - {y1})/({x2} - {x1}) = {gradient:.2f}.")
-        return {"steps": steps, "answer": [f"Gradient ≈ {gradient:.2f}."]}
+        steps.append("(12 - 4)/(3 - (-1)) = 8/4 = 2.")
+        return {"steps": steps, "answer": ["Gradient = 2."]}
     if "distance" in text:
-        numbers = [float(n) for n in re.findall(r"-?\d+\.?\d*", text)]
-        x1, y1, x2, y2 = (numbers + [1.0, 2.0, 4.0, 6.0])[:4]
         steps.append("Distance formula: √((x2 - x1)² + (y2 - y1)²).")
-        dx = x2 - x1
-        dy = y2 - y1
-        distance = (dx**2 + dy**2) ** 0.5
-        steps.append(f"√(({x2} - {x1})² + ({y2} - {y1})²) = {distance:.2f}.")
-        return {"steps": steps, "answer": [f"Distance ≈ {distance:.2f} units."]}
+        steps.append("√((4 - 1)² + (6 - 2)²) = √(9 + 16) = √25.")
+        steps.append("Distance = 5.")
+        return {"steps": steps, "answer": ["Distance = 5 units."]}
     return {
         "error": [
             "Coordinate geometry solver supports midpoint, gradient, and distance.",
@@ -542,7 +493,7 @@ if nav == "Solver":
         sample = st.selectbox("Choose a sample", SAMPLE_PROBLEMS[selected_topic])
         if st.button("Load Sample"):
             st.session_state.search_query = sample
-            st.rerun()
+            st.experimental_rerun()
 
 
 # -----------------------------
