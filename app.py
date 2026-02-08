@@ -1,13 +1,12 @@
 # app.py
 import streamlit as st
 import sympy as sp
-from sympy import sympify, solve, simplify, GreaterThan, LessThan, StrictGreaterThan, StrictLessThan
 import re
 import numpy as np
 import matplotlib.pyplot as plt
 
 # ────────────────────────────────────────────────
-# Custom CSS
+# Custom CSS with Google Fonts, Bootstrap, Font Awesome
 # ────────────────────────────────────────────────
 st.markdown(
     """
@@ -30,7 +29,6 @@ st.markdown(
         }
         .card { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);
                 margin-bottom: 1.5rem; padding: 1.5rem; background: white; }
-        .stButton > button { font-weight: 600; }
         .success-msg { background-color: #d4edda; color: #155724; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
         .info-box  { background-color: #e7f3ff; color: #004085; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
         .error-msg { background-color: #f8d7da; color: #721c24; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
@@ -48,42 +46,51 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-tab1, tab2, tab3, tab4 = st.tabs(["🏠 Home", "🔍 Solver", "🧪 Quiz", "📚 Resources"])
+# ────────────────────────────────────────────────
+# Tabs (only Home, Solver, AI Help)
+# ────────────────────────────────────────────────
+tab1, tab2, tab3 = st.tabs(["🏠 Home", "🔍 Solver", "🤖 AI Help"])
+
+x = sp.symbols('x')
 
 # ─── HOME ───────────────────────────────────────
 with tab1:
-    st.markdown("<h2>Welcome to MathFun!</h2>", unsafe_allow_html=True)
+    st.markdown("<h2>Welcome to MathFun</h2>", unsafe_allow_html=True)
     st.write("""
-    Kenyan KCSE revision tool for **Form 2** & **Form 3** 8-4-4 Mathematics.
+    This is a revision tool for Kenyan **Form 2** and **Form 3** mathematics under the 8-4-4 system.
 
     **Current features:**
-    • Step-by-step equation & inequality solver
-    • Surds simplification with steps
-    • Graphs: linear (1–3 lines), quadratic, inequality regions
-    • More coming soon: quizzes, bearings, probability...
+    • Algebra: equations, inequalities, surds, factorization
+    • Graphs: linear, quadratic, systems of equations
+    • AI helper: ask any math question and get guidance
 
-    Select **Solver** to begin!
+    Select **Solver** to start practicing problems, or **AI Help** for explanations and hints.
     """)
 
 # ─── SOLVER ─────────────────────────────────────
 with tab2:
     st.markdown("<h2><i class='fas fa-tools me-2'></i>Math Solver</h2>", unsafe_allow_html=True)
 
-    solver_mode = st.radio("Choose type:", 
-                           ["Equations & Inequalities", "Surds", "Graphs"],
-                           horizontal=True)
+    section = st.selectbox("Choose topic:", [
+        "Algebra – Equations & Inequalities",
+        "Algebra – Surds",
+        "Algebra – Factorization",
+        "Graphs – Quadratic",
+        "Graphs – Linear (single)",
+        "Graphs – Two lines (intersection)",
+        "Graphs – Three lines (system)"
+    ])
 
-    x = sp.symbols('x')
+    st.markdown("---")
 
-    if solver_mode == "Equations & Inequalities":
-        st.subheader("Equation / Inequality Solver")
+    if "Equations & Inequalities" in section:
+        st.subheader("Equations & Inequalities")
         st.markdown('<div class="info-box">Examples:<br>• x² - 5x + 6 = 0<br>• 2x + 3 > 11<br>• x² - 4x + 3 ≥ 0<br>• 4x - 12 = 0</div>', unsafe_allow_html=True)
 
         user_input = st.text_input("Enter equation or inequality:")
 
         if st.button("Solve", type="primary") and user_input:
             try:
-                # Clean input
                 cleaned = re.sub(r'\^', '**', user_input.strip())
                 cleaned = re.sub(r'\s*([=><]+)\s*', r'\1', cleaned)
 
@@ -103,179 +110,191 @@ with tab2:
                 right = sympify(right_str)
                 expr = left - right
 
-                steps = []
-
                 if op == '=':
-                    # ── Quadratic or linear equation ──
                     if expr.is_polynomial(x) and expr.as_poly(x).degree() == 2:
                         a, b, c = sp.Poly(expr, x).all_coeffs()
-                        steps.append(f"Quadratic: {a}x² + {b}x + {c} = 0")
                         disc = b**2 - 4*a*c
-                        steps.append(f"Discriminant: D = b² - 4ac = {disc}")
+                        st.markdown('<div class="success-msg">', unsafe_allow_html=True)
+                        st.write(f"**Quadratic equation:** {a}x² + {b}x + {c} = 0")
+                        st.write(f"Discriminant: D = {disc}")
                         if disc > 0:
                             root1 = (-b + sp.sqrt(disc)) / (2*a)
                             root2 = (-b - sp.sqrt(disc)) / (2*a)
-                            steps.append(f"Roots: x = {root1}, x = {root2}")
+                            st.write(f"Roots: x = {root1}, x = {root2}")
                         elif disc == 0:
                             root = -b / (2*a)
-                            steps.append(f"Double root: x = {root}")
+                            st.write(f"Double root: x = {root}")
                         else:
-                            steps.append("No real roots")
+                            st.write("No real roots")
+                        st.latex(sp.pretty(sp.solve(expr, x)))
+                        st.markdown('</div>', unsafe_allow_html=True)
                     else:
-                        sol = solve(expr, x)
-                        steps.append(f"Solution: {sol}")
-
-                    st.markdown('<div class="success-msg">', unsafe_allow_html=True)
-                    for step in steps:
-                        st.write(step)
-                    st.latex(sp.pretty(solve(expr, x)))
-                    st.markdown('</div>', unsafe_allow_html=True)
+                        sol = sp.solve(expr, x)
+                        st.markdown('<div class="success-msg">', unsafe_allow_html=True)
+                        st.write("**Solution:**")
+                        st.latex(sp.pretty(sol))
+                        st.markdown('</div>', unsafe_allow_html=True)
 
                 elif op in ['>', '>=', '<', '<=']:
-                    rel_map = {'>': StrictGreaterThan, '>=': GreaterThan,
-                               '<': StrictLessThan,  '<=': LessThan}
+                    rel_map = {'>': sp.StrictGreaterThan, '>=': sp.GreaterThan,
+                               '<': sp.StrictLessThan, '<=': sp.LessThan}
                     rel = rel_map[op]
-
-                    solution = solve(rel(left, right), x, domain=sp.S.Reals)
+                    solution = sp.solve(rel(left, right), x, domain=sp.S.Reals)
 
                     st.markdown('<div class="success-msg">', unsafe_allow_html=True)
                     st.write("**Solution set:**")
                     st.latex(sp.pretty(solution))
-                    st.write("**Steps (F3 tip):**")
-                    st.write("1. Solve = 0 to find critical points")
+                    st.write("**Quick steps:**")
+                    st.write("1. Find roots of = 0")
                     st.write("2. Test sign in each interval")
-                    st.write("3. Include equality points if ≥ or ≤")
+                    st.write("3. Include equality if ≥ or ≤")
                     st.markdown('</div>', unsafe_allow_html=True)
 
-                else:
-                    st.warning("Use =, >, <, >=, <=")
-
             except Exception as e:
-                st.markdown(f'<div class="error-msg">Error: {str(e)}<br>Tip: Use ** for powers, no spaces around operators.</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="error-msg">Error: {str(e)}<br>Tip: Use ** for powers, no spaces around = > <</div>', unsafe_allow_html=True)
 
-    elif solver_mode == "Surds":
-        st.subheader("Surds Simplifier")
+    elif "Surds" in section:
+        st.subheader("Surds Simplification")
         st.markdown('<div class="info-box">Examples:<br>• sqrt(50)<br>• sqrt(72) - sqrt(18)<br>• 3*sqrt(8) + sqrt(50)</div>', unsafe_allow_html=True)
 
         surd_input = st.text_input("Enter surd expression:")
-
         if st.button("Simplify", type="primary") and surd_input:
             try:
                 expr = sympify(surd_input)
-                simp = simplify(expr)
-
-                steps = [f"Original: {surd_input}"]
-                if expr != simp:
-                    steps.append(f"Simplified: {simp}")
-
+                simp = sp.simplify(expr)
                 st.markdown('<div class="success-msg">', unsafe_allow_html=True)
-                for s in steps:
-                    st.write(s)
-                st.latex(sp.latex(simp))
+                st.latex(f"{surd_input} \\quad = \\quad {sp.latex(simp)}")
                 st.markdown('</div>', unsafe_allow_html=True)
-
             except Exception as e:
-                st.markdown(f'<div class="error-msg">Error: {str(e)}</div>', unsafe_allow_html=True)
+                st.error(str(e))
 
-    elif solver_mode == "Graphs":
-        st.subheader("Graphical Solver")
-        graph_type = st.selectbox("Plot type:", ["Quadratic", "Linear (one line)", "Two lines (intersection)", "Three lines (system)"])
+    elif "Factorization" in section:
+        st.subheader("Factorization")
+        st.markdown('<div class="info-box">Examples:<br>• x² + 5x + 6<br>• 2x² - 8x + 6<br>• x³ - 8</div>', unsafe_allow_html=True)
 
-        fig, ax = plt.subplots(figsize=(9, 5.5))
+        factor_input = st.text_input("Enter polynomial to factor:")
+        if st.button("Factor", type="primary") and factor_input:
+            try:
+                expr = sympify(factor_input)
+                factored = sp.factor(expr)
+                st.markdown('<div class="success-msg">', unsafe_allow_html=True)
+                st.latex(f"{factor_input} \\quad = \\quad {sp.latex(factored)}")
+                st.markdown('</div>', unsafe_allow_html=True)
+            except Exception as e:
+                st.error(str(e))
 
-        if graph_type == "Quadratic":
-            col1, col2, col3 = st.columns(3)
-            a = col1.number_input("a", value=1.0)
-            b = col2.number_input("b", value=-5.0)
-            c = col3.number_input("c", value=6.0)
+    elif "Quadratic" in section:
+        st.subheader("Quadratic Graph")
+        col1, col2, col3 = st.columns(3)
+        a = col1.number_input("a", value=1.0)
+        b = col2.number_input("b", value=-5.0)
+        c = col3.number_input("c", value=6.0)
 
-            if st.button("Plot", type="primary"):
-                x_vals = np.linspace(-10, 10, 400)
-                y_vals = a*x_vals**2 + b*x_vals + c
-                ax.plot(x_vals, y_vals, color='#0d6efd', lw=2.5, label=f'y = {a}x² + {b}x + {c}')
-                ax.set_title("Quadratic Graph")
+        if st.button("Plot Quadratic", type="primary"):
+            x_vals = np.linspace(-10, 10, 400)
+            y_vals = a*x_vals**2 + b*x_vals + c
+            fig, ax = plt.subplots(figsize=(9, 5))
+            ax.plot(x_vals, y_vals, color='#0d6efd', lw=2.5, label=f'y = {a}x² + {b}x + {c}')
+            ax.axhline(0, color='black', lw=0.8)
+            ax.axvline(0, color='black', lw=0.8)
+            ax.grid(True, alpha=0.3)
+            ax.legend()
+            st.pyplot(fig)
 
-        elif graph_type == "Linear (one line)":
-            col1, col2 = st.columns(2)
-            m = col1.number_input("Slope (m)", value=2.0)
-            c = col2.number_input("Y-intercept (c)", value=-3.0)
+    elif "Linear (single)" in section:
+        st.subheader("Single Linear Graph")
+        col1, col2 = st.columns(2)
+        m = col1.number_input("Slope (m)", value=2.0)
+        c = col2.number_input("Intercept (c)", value=-3.0)
 
-            if st.button("Plot", type="primary"):
-                x_vals = np.linspace(-10, 10, 400)
-                y_vals = m*x_vals + c
-                ax.plot(x_vals, y_vals, color='#198754', lw=2.5, label=f'y = {m}x + {c}')
-                ax.set_title("Linear Graph")
+        if st.button("Plot", type="primary"):
+            x_vals = np.linspace(-10, 10, 400)
+            y_vals = m*x_vals + c
+            fig, ax = plt.subplots(figsize=(9, 5))
+            ax.plot(x_vals, y_vals, color='#198754', lw=2.5, label=f'y = {m}x + {c}')
+            ax.axhline(0, color='black', lw=0.8)
+            ax.axvline(0, color='black', lw=0.8)
+            ax.grid(True, alpha=0.3)
+            ax.legend()
+            st.pyplot(fig)
 
-        elif graph_type == "Two lines (intersection)":
-            st.write("Enter two lines: y = m₁x + c₁ and y = m₂x + c₂")
-            col1, col2, col3, col4 = st.columns(4)
-            m1 = col1.number_input("m₁", value=1.0)
-            c1 = col2.number_input("c₁", value=2.0)
-            m2 = col3.number_input("m₂", value=-2.0)
-            c2 = col4.number_input("c₂", value=4.0)
+    elif "Two lines" in section:
+        st.subheader("Two Lines – Find Intersection")
+        col1, col2, col3, col4 = st.columns(4)
+        m1 = col1.number_input("m₁", value=1.0)
+        c1 = col2.number_input("c₁", value=2.0)
+        m2 = col3.number_input("m₂", value=-2.0)
+        c2 = col4.number_input("c₂", value=4.0)
 
-            if st.button("Plot & Find Intersection", type="primary"):
-                x_vals = np.linspace(-10, 10, 400)
-                y1 = m1*x_vals + c1
-                y2 = m2*x_vals + c2
-                ax.plot(x_vals, y1, label=f'y = {m1}x + {c1}', color='#0d6efd')
-                ax.plot(x_vals, y2, label=f'y = {m2}x + {c2}', color='#dc3545')
+        if st.button("Plot & Solve", type="primary"):
+            x_vals = np.linspace(-10, 10, 400)
+            y1 = m1*x_vals + c1
+            y2 = m2*x_vals + c2
+            fig, ax = plt.subplots(figsize=(9, 5))
+            ax.plot(x_vals, y1, label=f'y = {m1}x + {c1}', color='#0d6efd')
+            ax.plot(x_vals, y2, label=f'y = {m2}x + {c2}', color='#dc3545')
 
-                # Find intersection
-                try:
-                    sol = solve([m1*x + c1 - (m2*x + c2)], x)
-                    if sol:
-                        xi = float(sol[0])
-                        yi = float(m1*xi + c1)
-                        ax.plot(xi, yi, 'ko', markersize=10, label=f"Intersection ({xi:.2f}, {yi:.2f})")
-                        st.success(f"Intersection at x = {xi:.3f}, y = {yi:.3f}")
-                except:
-                    st.info("No unique intersection (parallel or same line)")
+            try:
+                sol = sp.solve([m1*x + c1 - (m2*x + c2)], x)
+                if sol:
+                    xi = float(sol[0])
+                    yi = float(m1*xi + c1)
+                    ax.plot(xi, yi, 'ko', markersize=10, label=f"({xi:.2f}, {yi:.2f})")
+                    st.success(f"Intersection: x = {xi:.3f}, y = {yi:.3f}")
+            except:
+                st.info("No unique intersection (parallel or coincident)")
 
-                ax.set_title("Two Linear Equations")
+            ax.axhline(0, color='black', lw=0.8)
+            ax.axvline(0, color='black', lw=0.8)
+            ax.grid(True, alpha=0.3)
+            ax.legend()
+            st.pyplot(fig)
 
-        elif graph_type == "Three lines (system)":
-            st.write("Enter three lines (checks consistency of 3 equations)")
-            cols = st.columns(3)
-            lines = []
-            colors = ['#0d6efd', '#dc3545', '#ffc107']
-            for i in range(3):
-                with cols[i]:
-                    m = st.number_input(f"m{i+1}", value=float(1 - i*1.5), key=f"m{i}")
-                    c = st.number_input(f"c{i+1}", value=float(2 + i*2), key=f"c{i}")
-                    lines.append((m, c))
+    elif "Three lines" in section:
+        st.subheader("Three Lines – Check System")
+        cols = st.columns(3)
+        lines = []
+        colors = ['#0d6efd', '#dc3545', '#ffc107']
+        for i in range(3):
+            with cols[i]:
+                m = st.number_input(f"m{i+1}", value=float(1 - i*1.5), key=f"m{i}")
+                c = st.number_input(f"c{i+1}", value=float(2 + i*2), key=f"c{i}")
+                lines.append((m, c))
 
-            if st.button("Plot", type="primary"):
-                x_vals = np.linspace(-10, 10, 400)
-                for i, (m, c) in enumerate(lines):
-                    y = m*x_vals + c
-                    ax.plot(x_vals, y, label=f'y = {m}x + {c}', color=colors[i])
+        if st.button("Plot", type="primary"):
+            x_vals = np.linspace(-10, 10, 400)
+            fig, ax = plt.subplots(figsize=(9, 5))
+            for i, (m, c) in enumerate(lines):
+                y = m*x_vals + c
+                ax.plot(x_vals, y, label=f'y = {m}x + {c}', color=colors[i])
 
-                ax.set_title("Three Linear Equations – Check for common point")
+            ax.axhline(0, color='black', lw=0.8)
+            ax.axvline(0, color='black', lw=0.8)
+            ax.grid(True, alpha=0.3)
+            ax.legend()
+            st.pyplot(fig)
+            st.info("Look for a common intersection point of all three lines.")
 
-                st.info("For 3 lines to have one solution they must intersect at **one common point**.\nParallel or inconsistent = no solution / infinite solutions.")
-
-        # Common plot settings
-        ax.axhline(0, color='black', lw=0.8)
-        ax.axvline(0, color='black', lw=0.8)
-        ax.grid(True, alpha=0.3)
-        ax.legend()
-        st.pyplot(fig)
-
-# ─── QUIZ & RESOURCES (placeholders) ────────────
+# ─── AI HELP ────────────────────────────────────
 with tab3:
-    st.markdown("<h2><i class='fas fa-brain me-2'></i>Quiz</h2>", unsafe_allow_html=True)
-    st.info("Quizzes coming soon — topic-based questions with scoring!")
+    st.markdown("<h2><i class='fas fa-robot me-2'></i>AI Math Helper</h2>", unsafe_allow_html=True)
+    st.write("Ask any math question — equations, word problems, proofs, explanations, steps, etc.")
 
-with tab4:
-    st.markdown("<h2><i class='fas fa-book-open me-2'></i>Resources</h2>", unsafe_allow_html=True)
-    with st.expander("Quadratic Formula"):
-        st.latex(r"x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}")
-    with st.expander("Linear Equation (y = mx + c)"):
-        st.write("m = slope, c = y-intercept")
-    with st.expander("Surd Rules"):
-        st.write("√(a×b) = √a × √b    |    √(a/b) = √a / √b")
-    st.info("More notes coming soon!")
+    question = st.text_area("Type your question here:", height=140,
+                            placeholder="Example:\n"
+                                        "Solve 3x² - 12x + 9 = 0 step by step\n"
+                                        "Explain how to find bearings\n"
+                                        "Help me solve this word problem: ...")
+
+    if st.button("Get Help", type="primary") and question.strip():
+        st.markdown('<div class="info-box">'
+                    'Note: This is a simulation placeholder. In a real deployment, '
+                    'you would connect to an LLM API (Groq, OpenAI, etc.) here.'
+                    '</div>', unsafe_allow_html=True)
+
+        st.markdown("**Sample AI response (placeholder):**")
+        st.write("I see your question. Here's a step-by-step approach:")
+        st.info(question + "\n\n(Real answer would appear here when connected to an AI model)")
 
 st.markdown("---")
-st.caption("MathFun – KCSE 8-4-4 F2 & F3 Revision Tool | © 2025")
+st.caption("MathFun – 8-4-4 F2 & F3 Revision Tool | © 2025")
