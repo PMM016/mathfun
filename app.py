@@ -47,7 +47,7 @@ st.markdown(
 )
 
 # ────────────────────────────────────────────────
-# Tabs (only Home, Solver, AI Help)
+# Tabs
 # ────────────────────────────────────────────────
 tab1, tab2, tab3 = st.tabs(["🏠 Home", "🔍 Solver", "🤖 AI Help"])
 
@@ -62,9 +62,9 @@ with tab1:
     **Current features:**
     • Algebra: equations, inequalities, surds, factorization
     • Graphs: linear, quadratic, systems of equations
-    • AI helper: ask any math question and get guidance
+    • AI helper: ask any math question and get guidance (powered by OpenAI)
 
-    Select **Solver** to start practicing problems, or **AI Help** for explanations and hints.
+    Select **Solver** to start practicing problems, or **AI Help** for explanations and solutions.
     """)
 
 # ─── SOLVER ─────────────────────────────────────
@@ -85,7 +85,7 @@ with tab2:
 
     if "Equations & Inequalities" in section:
         st.subheader("Equations & Inequalities")
-        st.markdown('<div class="info-box">Examples:<br>• x² - 5x + 6 = 0<br>• 2x + 3 > 11<br>• x² - 4x + 3 ≥ 0<br>• 4x - 12 = 0</div>', unsafe_allow_html=True)
+        st.markdown('<div class="info-box">Examples:<br>• x**2 - 5*x + 6 = 0<br>• 2*x + 3 > 11<br>• x**2 - 4*x + 3 >= 0<br>• 4*x - 12 = 0</div>', unsafe_allow_html=True)
 
         user_input = st.text_input("Enter equation or inequality:")
 
@@ -106,8 +106,8 @@ with tab2:
                         right_str = parts[1].strip() if len(parts) > 1 else "0"
                         break
 
-                left = sympify(left_str)
-                right = sympify(right_str)
+                left = sp.sympify(left_str)
+                right = sp.sympify(right_str)
                 expr = left - right
 
                 if op == '=':
@@ -160,7 +160,7 @@ with tab2:
         surd_input = st.text_input("Enter surd expression:")
         if st.button("Simplify", type="primary") and surd_input:
             try:
-                expr = sympify(surd_input)
+                expr = sp.sympify(surd_input)
                 simp = sp.simplify(expr)
                 st.markdown('<div class="success-msg">', unsafe_allow_html=True)
                 st.latex(f"{surd_input} \\quad = \\quad {sp.latex(simp)}")
@@ -170,12 +170,12 @@ with tab2:
 
     elif "Factorization" in section:
         st.subheader("Factorization")
-        st.markdown('<div class="info-box">Examples:<br>• x² + 5x + 6<br>• 2x² - 8x + 6<br>• x³ - 8</div>', unsafe_allow_html=True)
+        st.markdown('<div class="info-box">Examples:<br>• x**2 + 5*x + 6<br>• 2*x**2 - 8*x + 6<br>• x**3 - 8</div>', unsafe_allow_html=True)
 
         factor_input = st.text_input("Enter polynomial to factor:")
         if st.button("Factor", type="primary") and factor_input:
             try:
-                expr = sympify(factor_input)
+                expr = sp.sympify(factor_input)
                 factored = sp.factor(expr)
                 st.markdown('<div class="success-msg">', unsafe_allow_html=True)
                 st.latex(f"{factor_input} \\quad = \\quad {sp.latex(factored)}")
@@ -277,24 +277,56 @@ with tab2:
 
 # ─── AI HELP ────────────────────────────────────
 with tab3:
-    st.markdown("<h2><i class='fas fa-robot me-2'></i>AI Math Helper</h2>", unsafe_allow_html=True)
-    st.write("Ask any math question — equations, word problems, proofs, explanations, steps, etc.")
+    st.markdown("<h2><i class='fas fa-robot me-2'></i>AI Math Helper (OpenAI)</h2>", unsafe_allow_html=True)
+    st.write("Ask any Form 2 / Form 3 math question — get step-by-step explanations, hints, or solutions.")
 
-    question = st.text_area("Type your question here:", height=140,
-                            placeholder="Example:\n"
-                                        "Solve 3x² - 12x + 9 = 0 step by step\n"
-                                        "Explain how to find bearings\n"
-                                        "Help me solve this word problem: ...")
+    question = st.text_area(
+        "Type your question here:",
+        height=160,
+        placeholder="Examples:\n"
+                    "Solve 3x² - 12x + 9 = 0 step by step\n"
+                    "Explain how to calculate bearings in navigation\n"
+                    "Help me understand circle theorems with an example\n"
+                    "A shop gives 15% discount on a shirt costing 800 KSh. What is the selling price?"
+    )
 
-    if st.button("Get Help", type="primary") and question.strip():
-        st.markdown('<div class="info-box">'
-                    'Note: This is a simulation placeholder. In a real deployment, '
-                    'you would connect to an LLM API (Groq, OpenAI, etc.) here.'
-                    '</div>', unsafe_allow_html=True)
+    if st.button("Ask AI", type="primary") and question.strip():
+        with st.spinner("Getting answer from AI..."):
+            try:
+                from openai import OpenAI
+                client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-        st.markdown("**Sample AI response (placeholder):**")
-        st.write("I see your question. Here's a step-by-step approach:")
-        st.info(question + "\n\n(Real answer would appear here when connected to an AI model)")
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",  # you can change to gpt-4o if you prefer
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are a friendly, patient Kenyan math teacher specializing in 8-4-4 O-Level "
+                                "Form 2 and Form 3 topics. Explain concepts clearly, step-by-step, using simple "
+                                "language suitable for KCSE students. Use LaTeX for math expressions when helpful. "
+                                "Show working where appropriate. If the question is unclear, ask for clarification."
+                            )
+                        },
+                        {"role": "user", "content": question}
+                    ],
+                    temperature=0.65,
+                    max_tokens=1400
+                )
+
+                answer = response.choices[0].message.content.strip()
+
+                st.markdown('<div class="success-msg">', unsafe_allow_html=True)
+                st.markdown("**AI Answer:**")
+                st.markdown(answer)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            except Exception as e:
+                st.markdown('<div class="error-msg">', unsafe_allow_html=True)
+                st.write("**Error connecting to OpenAI:**")
+                st.write(str(e))
+                st.write("Please check that OPENAI_API_KEY is correctly set in Streamlit secrets.")
+                st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("---")
 st.caption("MathFun – 8-4-4 F2 & F3 Revision Tool | © 2025")
