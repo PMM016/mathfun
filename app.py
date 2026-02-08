@@ -5,10 +5,9 @@ from sympy import sympify, solve, simplify, GreaterThan, LessThan, StrictGreater
 import re
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import patches
 
 # ────────────────────────────────────────────────
-# Inject custom CSS: Google Fonts + Bootstrap + Font Awesome + custom styles
+# Custom CSS: Google Fonts + Bootstrap + Font Awesome + styles
 # ────────────────────────────────────────────────
 st.markdown(
     """
@@ -21,8 +20,6 @@ st.markdown(
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Open+Sans:wght@300;400;500;600;700&display=swap');
-
         html, body, [class*="st-"] {
             font-family: 'Open Sans', sans-serif !important;
         }
@@ -46,6 +43,8 @@ st.markdown(
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             margin-bottom: 1.5rem;
+            padding: 1.5rem;
+            background: white;
         }
         .stButton > button {
             font-weight: 600;
@@ -88,7 +87,7 @@ st.markdown(
 )
 
 # ────────────────────────────────────────────────
-# Tabs / Navigation
+# Tabs
 # ────────────────────────────────────────────────
 tab1, tab2, tab3, tab4 = st.tabs([
     "🏠 Home",
@@ -106,11 +105,11 @@ with tab1:
     This app helps Kenyan KCSE candidates revise **Form 2** and **Form 3** mathematics topics from the 8-4-4 syllabus.
     
     **Features:**
-    - Step-by-step problem solver (algebra, surds, inequalities, graphs...)
-    - Interactive quizzes with instant feedback
+    - Step-by-step problem solver (equations, inequalities, surds, graphs...)
+    - Interactive quizzes with instant feedback (coming soon)
     - Quick formula references
     
-    **Start solving or quizzing now!**
+    **Start solving now!**
     """)
 
 # ────────────────────────────────────────────────
@@ -126,69 +125,85 @@ with tab2:
     x = sp.symbols('x')
 
     if solver_mode == "Equation / Inequality":
-        st.subheader("Linear / Quadratic / Inequality Solver")
-        user_input = st.text_input("Enter equation or inequality (examples):",
-                                   placeholder="x**2 - 5*x + 6 > 0    or    3x - 7 = 11    or    2x**2 + 5x - 3 = 0")
+        st.subheader("Equation / Inequality Solver")
+        st.info("Examples:  \n- x**2 - 5*x + 6 = 0  \n- x**2 - 5*x + 6 > 0  \n- 3*x - 7 <= 11  \n- 2*x**2 + 5*x - 3 = 0")
 
-        if st.button("Solve", type="primary"):
-            if user_input:
-                try:
-                    # Clean input
-                    cleaned = re.sub(r'\^', '**', user_input.strip())
-                    expr = sympify(cleaned)
+        user_input = st.text_input("Enter your equation or inequality:")
 
-                    if '=' in user_input:
-                        lhs, rhs = expr.args if expr.func == sp.Eq else (expr, 0)
-                        solution = solve(lhs - rhs, x)
-                        st.markdown('<div class="success-msg">', unsafe_allow_html=True)
-                        st.latex(f"Solution: {sp.pretty(solution)}")
-                        st.markdown('</div>', unsafe_allow_html=True)
+        if st.button("Solve", type="primary") and user_input:
+            try:
+                # Clean input: replace ^ with **, remove extra spaces
+                cleaned = re.sub(r'\^', '**', user_input.strip())
+                cleaned = re.sub(r'\s*([=><]+)\s*', r'\1', cleaned)  # Remove spaces around operators
 
-                    elif '>' in user_input or '<' in user_input:
-                        if '>=' in user_input:
-                            rel = GreaterThan
-                        elif '<=' in user_input:
-                            rel = LessThan
-                        elif '>' in user_input:
-                            rel = StrictGreaterThan
-                        else:
-                            rel = StrictLessThan
+                # Split on =, >, <, >=, <=
+                operators = ['>=', '<=', '>', '<', '=']
+                op = None
+                for o in operators:
+                    if o in cleaned:
+                        op = o
+                        parts = cleaned.split(o)
+                        break
 
-                        # Try to split lhs > rhs style
-                        try:
-                            solution = solve(rel(expr.lhs, expr.rhs), x, domain=sp.S.Reals)
-                        except:
-                            # Fallback: assume expression > 0
-                            solution = solve(rel(expr, 0), x, domain=sp.S.Reals)
+                if op:
+                    left_str = parts[0].strip()
+                    right_str = parts[1].strip() if len(parts) > 1 else '0'
 
-                        st.markdown('<div class="success-msg">', unsafe_allow_html=True)
-                        st.latex(f"Solution set: {sp.pretty(solution)}")
-                        st.markdown('</div>', unsafe_allow_html=True)
-                        st.info("Tip: Test intervals between critical points to determine where the expression is positive/negative.")
+                    # Convert to SymPy expressions
+                    left = sympify(left_str)
+                    right = sympify(right_str)
 
-                    else:
+                    expr = left - right  # Bring to form expr = 0 / expr > 0 etc.
+
+                    if op == '=':
                         solution = solve(expr, x)
                         st.markdown('<div class="success-msg">', unsafe_allow_html=True)
-                        st.latex(f"Solution: {sp.pretty(solution)}")
+                        st.latex(f"\\text{{Solution: }} {sp.pretty(solution)}")
                         st.markdown('</div>', unsafe_allow_html=True)
 
-                except Exception as e:
-                    st.markdown(f'<div class="error-msg">Error: {str(e)}<br>Try: use ** for powers, no spaces around operators.</div>', unsafe_allow_html=True)
+                    elif op in ['>', '>=', '<', '<=']:
+                        if op == '>':
+                            rel = StrictGreaterThan
+                        elif op == '>=':
+                            rel = GreaterThan
+                        elif op == '<':
+                            rel = StrictLessThan
+                        elif op == '<=':
+                            rel = LessThan
+
+                        solution = solve(rel(left, right), x, domain=sp.S.Reals)
+
+                        st.markdown('<div class="success-msg">', unsafe_allow_html=True)
+                        st.latex(f"\\text{{Solution set: }} {sp.pretty(solution)}")
+                        st.markdown('</div>', unsafe_allow_html=True)
+
+                        st.info("**Steps for inequalities (F3 tip):** Find critical points (roots), test intervals, shade where true.")
+                    else:
+                        st.warning("Unsupported operator. Use =, >, <, >=, <=")
+                else:
+                    # No operator → treat as expression = 0
+                    expr = sympify(cleaned)
+                    solution = solve(expr, x)
+                    st.markdown('<div class="success-msg">', unsafe_allow_html=True)
+                    st.latex(f"\\text{{Solution: }} {sp.pretty(solution)}")
+                    st.markdown('</div>', unsafe_allow_html=True)
+
+            except Exception as e:
+                st.markdown(f'<div class="error-msg">Error: {str(e)}<br>Tip: Use ** for powers (x**2), no spaces around =/>/<, try rephrasing.</div>', unsafe_allow_html=True)
 
     elif solver_mode == "Surds Simplification":
         st.subheader("Surds Simplifier")
-        surd_input = st.text_input("Enter expression (e.g. sqrt(50) + 3*sqrt(8) - sqrt(18))")
+        surd_input = st.text_input("Enter surd expression (e.g. sqrt(50) + 3*sqrt(8) - sqrt(18))")
 
-        if st.button("Simplify", type="primary"):
-            if surd_input:
-                try:
-                    expr = sympify(surd_input)
-                    simplified = simplify(expr)
-                    st.markdown('<div class="success-msg">', unsafe_allow_html=True)
-                    st.latex(f"{surd_input} \\quad = \\quad {sp.latex(simplified)}")
-                    st.markdown('</div>', unsafe_allow_html=True)
-                except Exception as e:
-                    st.markdown(f'<div class="error-msg">Error: {str(e)}</div>', unsafe_allow_html=True)
+        if st.button("Simplify", type="primary") and surd_input:
+            try:
+                expr = sympify(surd_input)
+                simplified = simplify(expr)
+                st.markdown('<div class="success-msg">', unsafe_allow_html=True)
+                st.latex(f"{surd_input} \\quad = \\quad {sp.latex(simplified)}")
+                st.markdown('</div>', unsafe_allow_html=True)
+            except Exception as e:
+                st.markdown(f'<div class="error-msg">Error: {str(e)}</div>', unsafe_allow_html=True)
 
     elif solver_mode == "Graphical Method":
         st.subheader("Graphical Solver")
@@ -231,7 +246,6 @@ with tab2:
                     fig, ax = plt.subplots(figsize=(9, 5))
                     ax.plot(x_vals, y_vals, color='#198754', lw=2.2, label=ineq_input)
 
-                    # Shade > 0 region (green)
                     ax.fill_between(x_vals, y_vals, where=(y_vals > 0), color='green', alpha=0.25, label="True region (>0)")
                     ax.fill_between(x_vals, y_vals, where=(y_vals < 0), color='red', alpha=0.15, label="False region (<0)")
 
@@ -245,7 +259,7 @@ with tab2:
                     st.markdown(f'<div class="error-msg">Error: {str(e)}</div>', unsafe_allow_html=True)
 
 # ────────────────────────────────────────────────
-# QUIZ & RESOURCES (placeholders – expand later)
+# QUIZ & RESOURCES (placeholders)
 # ────────────────────────────────────────────────
 with tab3:
     st.markdown("<h2><i class='fas fa-brain me-2'></i>Quiz</h2>", unsafe_allow_html=True)
